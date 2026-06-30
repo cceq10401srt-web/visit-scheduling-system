@@ -163,6 +163,8 @@
     font-size:11.5px;line-height:1.5;padding:1px 0;
   }
   .factory-chip + .factory-chip{border-top:1px dashed var(--line);}
+  .factory-chip.clickable{cursor:pointer;color:var(--accent-strong);}
+  .factory-chip.clickable:hover{text-decoration:underline;}
 
   /* ---- modal ---- */
   .modal-overlay{
@@ -584,7 +586,7 @@ function renderSubmissions(){
     return;
   }
   let html = `<div style="overflow-x:auto;"><table class="data"><thead><tr>
-    <th>管制編號</th><th>工廠名稱</th><th>住址</th><th>聯絡人</th><th>電話</th><th>可配合時段</th><th>備註</th><th>操作</th>
+    <th>管制編號</th><th>工廠名稱</th><th>住址</th><th>聯絡人</th><th>電話</th><th>備註</th><th>操作</th>
   </tr></thead><tbody>`;
   for(const s of submissions){
     html += `<tr>
@@ -593,7 +595,6 @@ function renderSubmissions(){
       <td>${s.address}</td>
       <td>${s.contact_name}</td>
       <td>${s.contact_phone}</td>
-      <td>${fmtAvail(s.availability)}</td>
       <td>${s.notes || ''}</td>
       <td class="row-actions">
         <button class="secondary small" data-edit="${s.id}">編輯</button>
@@ -645,14 +646,14 @@ function toDateStr(d){
 }
 function fmtMD(d){ return `${d.getMonth()+1}/${d.getDate()}`; }
 
-// 建立 { date: {am:[factoryNames], pm:[factoryNames]} } 對照表
+// 建立 { date: {am:[{id,name}], pm:[{id,name}]} } 對照表
 function buildAvailabilityIndex(){
   const index = {};
   submissions.forEach(s=>{
     (s.availability||[]).forEach(a=>{
       if(!index[a.date]) index[a.date] = {am:[], pm:[]};
-      if(a.am) index[a.date].am.push(s.factory_name);
-      if(a.pm) index[a.date].pm.push(s.factory_name);
+      if(a.am) index[a.date].am.push({id:s.id, name:s.factory_name});
+      if(a.pm) index[a.date].pm.push({id:s.id, name:s.factory_name});
     });
   });
   return index;
@@ -691,7 +692,7 @@ function renderCalendarView(){
     area.innerHTML = '<div class="empty-state">尚未設定任何開放日期，請先到「開放日期設定」頁籤設定。</div>';
     return;
   }
-  const availIndex = buildAvailabilityIndex();
+  const availIndex = buildAvailabilityIndex(); // { date: {am:[{id,name}], pm:[{id,name}]} }
   let html = '';
   weeks.forEach(week=>{
     const lastDay = week.days[week.days.length-1];
@@ -713,9 +714,9 @@ function renderCalendarView(){
         if(!enabled){
           html += `<td style="background:#fafbfc;"></td>`;
         }else{
-          const names = (availIndex[d] && availIndex[d][period]) || [];
-          const content = names.length
-            ? names.map(n=>`<div class="factory-chip">${n}</div>`).join('')
+          const entries = (availIndex[d] && availIndex[d][period]) || [];
+          const content = entries.length
+            ? entries.map(e=>`<div class="factory-chip clickable" data-edit-cal="${e.id}">${e.name}</div>`).join('')
             : '';
           html += `<td>${content}</td>`;
         }
@@ -725,6 +726,10 @@ function renderCalendarView(){
     html += `</tbody></table></div>`;
   });
   area.innerHTML = html;
+
+  area.querySelectorAll('[data-edit-cal]').forEach(el=>{
+    el.addEventListener('click', ()=> openEditModal(el.dataset.editCal));
+  });
 }
 
 // ===== Export Excel (week-grid) =====
@@ -756,8 +761,8 @@ document.getElementById('exportXlsxBtn').addEventListener('click', ()=>{
         const slot = openSlotsMap[d];
         const enabled = slot && slot[period];
         if(!enabled){ row.push(''); return; }
-        const names = (availIndex[d] && availIndex[d][period]) || [];
-        row.push(names.join('\n'));
+        const entries = (availIndex[d] && availIndex[d][period]) || [];
+        row.push(entries.map(e=>e.name).join('\n'));
       });
       aoa.push(row);
     });
@@ -793,6 +798,7 @@ async function deleteSubmission(id){
     await sbRpc('admin_delete_submission', {p_code: session.code, p_password: session.password, p_id: id});
     submissions = submissions.filter(s=>s.id !== id);
     renderSubmissions();
+    if(currentView === 'calendar') renderCalendarView();
   }catch(e){
     alert('刪除失敗：' + e.message);
   }
