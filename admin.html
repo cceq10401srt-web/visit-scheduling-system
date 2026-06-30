@@ -824,10 +824,12 @@ function openEditModal(id){
   }else{
     avDiv.innerHTML = av.map((a,i)=>{
       const dt = new Date(a.date+'T00:00:00');
-      return `<div class="toggle-row" data-idx="${i}" style="margin-bottom:6px;">
+      const noteHtml = a.note ? `<div style="flex-basis:100%;font-size:12px;color:var(--ink-soft);padding:4px 0 0 110px;">備註：${a.note}</div>` : '';
+      return `<div class="toggle-row" data-idx="${i}" style="margin-bottom:6px;flex-wrap:wrap;">
         <div style="flex:0 0 110px;font-size:13px;padding-top:9px;">${a.date}（週${DOW[dt.getDay()]}）</div>
         <div class="toggle-btn am-toggle ${a.am?'on':''}" style="flex:1;">${campaign.am_label}</div>
         <div class="toggle-btn pm-toggle ${a.pm?'on':''}" style="flex:1;">${campaign.pm_label}</div>
+        ${noteHtml}
       </div>`;
     }).join('');
     avDiv.querySelectorAll('.am-toggle, .pm-toggle').forEach(el=>{
@@ -849,7 +851,8 @@ document.getElementById('saveEditBtn').addEventListener('click', async ()=>{
   const availability = Array.from(avRows).map((row,i)=>({
     date: s.availability[i].date,
     am: row.querySelector('.am-toggle').classList.contains('on'),
-    pm: row.querySelector('.pm-toggle').classList.contains('on')
+    pm: row.querySelector('.pm-toggle').classList.contains('on'),
+    note: s.availability[i].note || ''
   }));
 
   const payload = {
