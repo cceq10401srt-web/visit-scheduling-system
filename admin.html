@@ -767,16 +767,23 @@ document.getElementById('exportXlsxBtn').addEventListener('click', ()=>{
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!merges'] = merges;
-  ws['!cols'] = [{wch:8}, {wch:18}, {wch:18}, {wch:18}, {wch:18}, {wch:18}];
-  // 設定列高，讓多行工廠名稱可讀
+  ws['!cols'] = [{wch:8}, {wch:20}, {wch:20}, {wch:20}, {wch:20}, {wch:20}];
   ws['!rows'] = aoa.map(()=>({hpx:60}));
-  Object.keys(ws).forEach(key=>{
-    if(key[0]==='!') return;
-    if(!ws[key].s) ws[key].s = {};
-    ws[key].s.alignment = {wrapText:true, vertical:'top'};
-  });
 
   XLSX.utils.book_append_sheet(wb, ws, '訪查週曆');
+
+  // 第二個工作表：工廠基本資料清單
+  const listHeader = ['管制編號','公司名稱','聯絡人','電話','EMAIL','住址','備註'];
+  const listRows = submissions.map(s => [
+    s.control_no, s.factory_name, s.contact_name, s.contact_phone,
+    s.contact_email || '', s.address, s.notes || ''
+  ]);
+  const listAoa = [listHeader, ...listRows];
+  const ws2 = XLSX.utils.aoa_to_sheet(listAoa);
+  ws2['!cols'] = [{wch:14}, {wch:26}, {wch:12}, {wch:16}, {wch:24}, {wch:34}, {wch:20}];
+  ws2['!autofilter'] = {ref: XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:listAoa.length-1, c:listHeader.length-1}})};
+  XLSX.utils.book_append_sheet(wb, ws2, '工廠基本資料');
+
   XLSX.writeFile(wb, `訪查週曆_${session.code}.xlsx`);
 });
 
