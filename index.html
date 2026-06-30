@@ -80,7 +80,7 @@
   }
   label:first-of-type{margin-top:0;}
   label .req{color:#c0392b;margin-left:2px;}
-  input[type=text], input[type=tel], input[type=email], textarea{
+  input[type=text], input[type=tel], input[type=email], textarea, select{
     width:100%;
     padding:9px 11px;
     border:1px solid var(--line-strong);
@@ -90,7 +90,8 @@
     color:var(--ink);
     background:#fff;
   }
-  input:focus, textarea:focus{
+  select{appearance:auto;cursor:pointer;}
+  input:focus, textarea:focus, select:focus{
     outline:none;
     border-color:var(--accent);
     box-shadow:0 0 0 3px var(--accent-soft);
@@ -265,7 +266,34 @@
       <input type="text" id="factoryName" placeholder="請輸入工廠全銜">
 
       <label>工廠住址<span class="req">*</span></label>
-      <input type="text" id="address" placeholder="請輸入工廠地址">
+      <div class="row2" style="margin-bottom:0;">
+        <select id="addressCity">
+          <option value="">請選擇縣市</option>
+          <option value="台北市">台北市</option>
+          <option value="新北市">新北市</option>
+          <option value="桃園市">桃園市</option>
+          <option value="台中市">台中市</option>
+          <option value="台南市">台南市</option>
+          <option value="高雄市">高雄市</option>
+          <option value="基隆市">基隆市</option>
+          <option value="新竹市">新竹市</option>
+          <option value="新竹縣">新竹縣</option>
+          <option value="苗栗縣">苗栗縣</option>
+          <option value="彰化縣">彰化縣</option>
+          <option value="南投縣">南投縣</option>
+          <option value="雲林縣">雲林縣</option>
+          <option value="嘉義市">嘉義市</option>
+          <option value="嘉義縣">嘉義縣</option>
+          <option value="屏東縣">屏東縣</option>
+          <option value="宜蘭縣">宜蘭縣</option>
+          <option value="花蓮縣">花蓮縣</option>
+          <option value="台東縣">台東縣</option>
+          <option value="澎湖縣">澎湖縣</option>
+          <option value="金門縣">金門縣</option>
+          <option value="連江縣">連江縣</option>
+        </select>
+        <input type="text" id="addressDetail" placeholder="請輸入區域與詳細地址，例如：信義區信義路五段7號">
+      </div>
 
       <div class="row2">
         <div>
@@ -460,11 +488,16 @@ function buildAvailabilityArray(){
     .map(d => ({date:d, am:!!selection[d].am, pm:!!selection[d].pm}));
 }
 
+function buildFullAddress(){
+  const city = document.getElementById('addressCity').value;
+  const detail = document.getElementById('addressDetail').value.trim();
+  return city && detail ? `${city}${detail}` : '';
+}
+
 function validate(){
   const required = [
     ['controlNo','管制編號'],
     ['factoryName','工廠名稱'],
-    ['address','工廠住址'],
     ['contactName','聯絡人姓名'],
     ['contactPhone','聯絡人電話']
   ];
@@ -472,6 +505,12 @@ function validate(){
     if(!document.getElementById(id).value.trim()){
       return `請填寫「${label}」`;
     }
+  }
+  if(!document.getElementById('addressCity').value){
+    return '請選擇工廠所在縣市';
+  }
+  if(!document.getElementById('addressDetail').value.trim()){
+    return '請填寫工廠詳細地址';
   }
   if(buildAvailabilityArray().length === 0){
     return '請至少勾選一個可配合的時段';
@@ -496,7 +535,7 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     campaign_id: campaign.id,
     control_no: document.getElementById('controlNo').value.trim(),
     factory_name: document.getElementById('factoryName').value.trim(),
-    address: document.getElementById('address').value.trim(),
+    address: buildFullAddress(),
     contact_name: document.getElementById('contactName').value.trim(),
     contact_phone: document.getElementById('contactPhone').value.trim(),
     contact_email: document.getElementById('contactEmail').value.trim() || null,
