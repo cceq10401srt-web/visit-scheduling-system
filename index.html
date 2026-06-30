@@ -350,7 +350,9 @@ async function sb(path, opts={}){
     const t = await res.text();
     throw new Error(t || res.statusText);
   }
-  return res.status === 204 ? null : res.json();
+  const raw = await res.text();
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch{ return null; }
 }
 
 async function sbRpc(fn, body){
