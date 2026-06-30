@@ -131,6 +131,24 @@
   .pick-cal-day .pc-half.selected{
     background:var(--accent);color:#fff;
   }
+  .pick-cal-day .pc-note-btn{
+    font-size:9.5px;text-align:center;padding:2px 0;color:var(--ink-soft);
+    background:#f7f8f9;border-top:1px solid var(--line);cursor:pointer;user-select:none;
+  }
+  .pick-cal-day .pc-note-btn:hover{background:var(--accent-soft);}
+  .pick-cal-day .pc-note-btn.has-note{color:var(--accent-strong);font-weight:700;background:#fff3cd;}
+
+  .note-popover-overlay{
+    position:fixed;inset:0;background:rgba(20,24,30,.4);
+    display:none;align-items:center;justify-content:center;z-index:60;padding:16px;
+  }
+  .note-popover-overlay.show{display:flex;}
+  .note-popover{
+    background:#fff;border-radius:10px;padding:18px;max-width:360px;width:100%;
+  }
+  .note-popover .np-title{font-size:13.5px;font-weight:700;margin-bottom:10px;}
+  .note-popover textarea{min-height:80px;}
+  .note-popover .np-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
 
   .empty-state{
     text-align:center;
@@ -336,6 +354,17 @@
   <footer>本系統僅供工廠訪查排程使用</footer>
 </div>
 
+<div class="note-popover-overlay" id="notePopoverOverlay">
+  <div class="note-popover">
+    <div class="np-title" id="notePopoverTitle">日期備註</div>
+    <textarea id="notePopoverInput" placeholder="例如：僅上午有空，下午需提前通知"></textarea>
+    <div class="np-actions">
+      <button class="secondary" id="noteCancelBtn" type="button">取消</button>
+      <button class="primary" id="noteSaveBtn" type="button">儲存備註</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="config.js"></script>
 <script>
@@ -466,11 +495,13 @@ function renderMonthGrid(){
     const isClosed = !amOpen && !pmOpen;
     const amSel = selection[dateStr] && selection[dateStr].am;
     const pmSel = selection[dateStr] && selection[dateStr].pm;
+    const hasNote = selection[dateStr] && selection[dateStr].note;
 
     html += `<div class="pick-cal-day ${isClosed?'closed':''}">
       <div class="pc-num">${d}</div>
       <div class="pc-half ${amOpen?'enabled':''} ${amSel?'selected':''}" ${amOpen?`data-date="${dateStr}" data-period="am"`:''}>${campaign.am_label}</div>
       <div class="pc-half ${pmOpen?'enabled':''} ${pmSel?'selected':''}" ${pmOpen?`data-date="${dateStr}" data-period="pm"`:''}>${campaign.pm_label}</div>
+      ${!isClosed ? `<div class="pc-note-btn ${hasNote?'has-note':''}" data-note-date="${dateStr}">${hasNote?'已填備註':'備註'}</div>` : ''}
     </div>`;
   }
   html += `</div>`;
@@ -480,14 +511,41 @@ function renderMonthGrid(){
     el.addEventListener('click', ()=>{
       const date = el.dataset.date;
       const period = el.dataset.period;
-      if(!selection[date]) selection[date] = {am:false, pm:false};
+      if(!selection[date]) selection[date] = {am:false, pm:false, note:''};
       selection[date][period] = !selection[date][period];
       el.classList.toggle('selected', selection[date][period]);
       updateSummary();
     });
   });
+
+  area.querySelectorAll('[data-note-date]').forEach(el=>{
+    el.addEventListener('click', ()=> openNotePopover(el.dataset.noteDate));
+  });
+
   updateSummary();
 }
+
+let noteEditingDate = null;
+
+function openNotePopover(dateStr){
+  noteEditingDate = dateStr;
+  const dt = new Date(dateStr + 'T00:00:00');
+  document.getElementById('notePopoverTitle').textContent = `${fmtDate(dateStr)}（週${DOW[dt.getDay()]}）備註`;
+  document.getElementById('notePopoverInput').value = (selection[dateStr] && selection[dateStr].note) || '';
+  document.getElementById('notePopoverOverlay').classList.add('show');
+}
+
+document.getElementById('noteCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('notePopoverOverlay').classList.remove('show');
+});
+
+document.getElementById('noteSaveBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('notePopoverInput').value.trim();
+  if(!selection[noteEditingDate]) selection[noteEditingDate] = {am:false, pm:false, note:''};
+  selection[noteEditingDate].note = text;
+  document.getElementById('notePopoverOverlay').classList.remove('show');
+  renderMonthGrid();
+});
 
 document.getElementById('prevMonthBtn').addEventListener('click', ()=>{
   viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;}
@@ -517,7 +575,7 @@ function buildAvailabilityArray(){
   return Object.keys(selection)
     .filter(d => selection[d].am || selection[d].pm)
     .sort()
-    .map(d => ({date:d, am:!!selection[d].am, pm:!!selection[d].pm}));
+    .map(d => ({date:d, am:!!selection[d].am, pm:!!selection[d].pm, note: selection[d].note || ''}));
 }
 
 function buildFullAddress(){
@@ -594,7 +652,8 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
 function availabilityText(av){
   return av.map(a=>{
     const periods = [a.am ? campaign.am_label : null, a.pm ? campaign.pm_label : null].filter(Boolean).join('、');
-    return `${a.date}（週${DOW[new Date(a.date+'T00:00:00').getDay()]}）：${periods}`;
+    const noteText = a.note ? `（備註：${a.note}）` : '';
+    return `${a.date}（週${DOW[new Date(a.date+'T00:00:00').getDay()]}）：${periods}${noteText}`;
   }).join('\n');
 }
 
