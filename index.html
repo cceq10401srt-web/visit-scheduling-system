@@ -100,50 +100,37 @@
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media (max-width:560px){.row2{grid-template-columns:1fr;}}
 
-  .cal-table{width:100%;border-collapse:collapse;font-size:13.5px;}
-  .cal-table th{
-    text-align:left;
-    font-weight:600;
-    color:var(--ink-soft);
-    padding:8px 6px;
-    border-bottom:1px solid var(--line);
+  .month-nav{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+  .month-nav .label{font-size:15px;font-weight:700;min-width:100px;text-align:center;}
+  .month-nav-btn{
+    background:#fff;border:1px solid var(--line-strong);color:var(--ink);
+    padding:7px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
   }
-  .cal-table td{
-    padding:9px 6px;
-    border-bottom:1px solid var(--line);
-    vertical-align:middle;
+  .month-nav-btn:hover{background:var(--bg);}
+
+  .pick-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .pick-cal-dow{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:4px 0;font-weight:600;}
+  .pick-cal-day{
+    border:1px solid var(--line);border-radius:8px;overflow:hidden;
+    min-height:62px;display:flex;flex-direction:column;
   }
-  .cal-table tr:last-child td{border-bottom:none;}
-  .date-cell{font-weight:600;white-space:nowrap;}
-  .date-cell .dow{font-weight:400;color:var(--ink-soft);margin-left:4px;}
-  .slot-btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:100%;
-    padding:8px 4px;
-    border:1px solid var(--line-strong);
-    border-radius:8px;
-    background:#fff;
-    cursor:pointer;
-    font-size:13px;
-    font-weight:600;
-    color:var(--ink-soft);
-    user-select:none;
-    transition:background .12s, border-color .12s, color .12s;
+  .pick-cal-day.outside{border-color:transparent;}
+  .pick-cal-day .pc-num{
+    font-size:11.5px;font-weight:700;text-align:center;padding:3px 0;color:var(--ink-soft);
   }
-  .slot-btn.selected{
-    background:var(--accent);
-    border-color:var(--accent);
-    color:#fff;
+  .pick-cal-day.closed .pc-num{color:#c2c7cd;}
+  .pick-cal-day .pc-half{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:600;color:#c2c7cd;background:#f7f8f9;
+    border-top:1px solid var(--line);cursor:default;
   }
-  .slot-btn.disabled{
-    background:#f1f2f4;
-    border-color:var(--line);
-    color:#c2c7cd;
-    cursor:not-allowed;
+  .pick-cal-day .pc-half.enabled{
+    color:var(--ink-soft);background:#fff;cursor:pointer;
   }
-  .slot-cell{width:84px;}
+  .pick-cal-day .pc-half.enabled:hover{background:var(--accent-soft);}
+  .pick-cal-day .pc-half.selected{
+    background:var(--accent);color:#fff;
+  }
 
   .empty-state{
     text-align:center;
@@ -315,6 +302,11 @@
 
     <div class="card">
       <h2><span class="num">2</span>可配合訪查時段</h2>
+      <div class="month-nav">
+        <button class="month-nav-btn" id="prevMonthBtn" type="button">←</button>
+        <div class="label" id="monthLabel"></div>
+        <button class="month-nav-btn" id="nextMonthBtn" type="button">→</button>
+      </div>
       <div id="calendarArea">
         <div class="empty-state">載入開放時段中…</div>
       </div>
@@ -433,38 +425,78 @@ async function loadOpenSlots(){
   renderCalendar();
 }
 
+let viewYear, viewMonth; // 0-indexed month，初始設為第一個開放日期所在月份
+
 function renderCalendar(){
-  const area = document.getElementById('calendarArea');
   if(openSlots.length === 0){
-    area.innerHTML = '<div class="empty-state">目前尚無開放的訪查日期，請洽承辦人員。</div>';
+    document.getElementById('calendarArea').innerHTML = '<div class="empty-state">目前尚無開放的訪查日期，請洽承辦人員。</div>';
+    document.querySelector('.month-nav').style.display = 'none';
     return;
   }
-  let html = `<table class="cal-table"><thead><tr>
-    <th>日期</th><th class="slot-cell">${campaign.am_label}</th><th class="slot-cell">${campaign.pm_label}</th>
-  </tr></thead><tbody>`;
-  for(const slot of openSlots){
-    const dt = new Date(slot.slot_date + 'T00:00:00');
-    html += `<tr>
-      <td class="date-cell">${fmtDate(slot.slot_date)}<span class="dow">週${DOW[dt.getDay()]}</span></td>
-      <td class="slot-cell">${slot.am_enabled ? `<div class="slot-btn" data-date="${slot.slot_date}" data-period="am">可配合</div>` : `<div class="slot-btn disabled">未開放</div>`}</td>
-      <td class="slot-cell">${slot.pm_enabled ? `<div class="slot-btn" data-date="${slot.slot_date}" data-period="pm">可配合</div>` : `<div class="slot-btn disabled">未開放</div>`}</td>
-    </tr>`;
+  if(viewYear === undefined){
+    const firstDate = new Date(openSlots[0].slot_date + 'T00:00:00');
+    viewYear = firstDate.getFullYear();
+    viewMonth = firstDate.getMonth();
   }
-  html += '</tbody></table>';
+  renderMonthGrid();
+}
+
+function renderMonthGrid(){
+  document.getElementById('monthLabel').textContent = `${viewYear} 年 ${viewMonth+1} 月`;
+  const area = document.getElementById('calendarArea');
+  const slotMap = {};
+  openSlots.forEach(s=>{ slotMap[s.slot_date] = s; });
+
+  let html = `<div class="pick-cal-grid">`;
+  DOW.forEach(d=> html += `<div class="pick-cal-dow">${d}</div>`);
+
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startOffset = firstDay.getDay();
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+
+  for(let i=0;i<startOffset;i++){
+    html += `<div class="pick-cal-day outside"></div>`;
+  }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const slot = slotMap[dateStr];
+    const amOpen = slot && slot.am_enabled;
+    const pmOpen = slot && slot.pm_enabled;
+    const isClosed = !amOpen && !pmOpen;
+    const amSel = selection[dateStr] && selection[dateStr].am;
+    const pmSel = selection[dateStr] && selection[dateStr].pm;
+
+    html += `<div class="pick-cal-day ${isClosed?'closed':''}">
+      <div class="pc-num">${d}</div>
+      <div class="pc-half ${amOpen?'enabled':''} ${amSel?'selected':''}" ${amOpen?`data-date="${dateStr}" data-period="am"`:''}>${campaign.am_label}</div>
+      <div class="pc-half ${pmOpen?'enabled':''} ${pmSel?'selected':''}" ${pmOpen?`data-date="${dateStr}" data-period="pm"`:''}>${campaign.pm_label}</div>
+    </div>`;
+  }
+  html += `</div>`;
   area.innerHTML = html;
 
-  area.querySelectorAll('.slot-btn[data-date]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const date = btn.dataset.date;
-      const period = btn.dataset.period;
+  area.querySelectorAll('.pc-half.enabled').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const date = el.dataset.date;
+      const period = el.dataset.period;
       if(!selection[date]) selection[date] = {am:false, pm:false};
       selection[date][period] = !selection[date][period];
-      btn.classList.toggle('selected', selection[date][period]);
+      el.classList.toggle('selected', selection[date][period]);
       updateSummary();
     });
   });
   updateSummary();
 }
+
+document.getElementById('prevMonthBtn').addEventListener('click', ()=>{
+  viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;}
+  renderMonthGrid();
+});
+document.getElementById('nextMonthBtn').addEventListener('click', ()=>{
+  viewMonth++; if(viewMonth>11){viewMonth=0; viewYear++;}
+  renderMonthGrid();
+});
 
 function updateSummary(){
   const dates = Object.keys(selection).filter(d => selection[d].am || selection[d].pm);
