@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>現場訪查時間預約</title>
+<style>
+  :root{
+    --ink:#1f2937;
+    --ink-soft:#5b6472;
+    --line:#dfe3e8;
+    --line-strong:#c4cad3;
+    --bg:#f5f6f8;
+    --card:#ffffff;
+    --accent:#2f5fa3;
+    --accent-soft:#eaf1fb;
+    --accent-strong:#1e4474;
+    --warn-bg:#fdece9;
+    --warn-text:#a3341f;
+    --ok-bg:#e9f5ee;
+    --ok-text:#1f6b43;
+    --radius:10px;
+    font-family: -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.6;
+    padding:24px 16px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+  .header{
+    margin-bottom:24px;
+  }
+  .eyebrow{
+    font-size:13px;
+    color:var(--accent-strong);
+    letter-spacing:.04em;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  h1{
+    font-size:22px;
+    margin:0 0 8px;
+    font-weight:700;
+  }
+  .sub{
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 20px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-size:15px;
+    margin:0 0 16px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .card h2 .num{
+    width:22px;height:22px;border-radius:50%;
+    background:var(--accent);color:#fff;
+    font-size:12px;display:inline-flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin:14px 0 5px;
+  }
+  label:first-of-type{margin-top:0;}
+  label .req{color:#c0392b;margin-left:2px;}
+  input[type=text], input[type=tel], input[type=email], textarea, select{
+    width:100%;
+    padding:9px 11px;
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+    color:var(--ink);
+    background:#fff;
+  }
+  select{appearance:auto;cursor:pointer;}
+  input:focus, textarea:focus, select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  textarea{resize:vertical;min-height:64px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:560px){.row2{grid-template-columns:1fr;}}
+
+  .slot-progress-wrap{text-align:left;margin-bottom:14px;}
+  .open-range-text{font-size:16px;font-weight:600;color:var(--ink-soft);}
+  .slot-progress{font-size:16px;font-weight:700;color:var(--accent-strong);}
+  .pick-hint{font-size:13px;color:var(--ink-soft);margin-bottom:10px;}
+
+  .pick-week-block{margin-bottom:20px;}
+  .pick-week-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+  .pick-week-table th{
+    border:1px solid var(--line);padding:8px 4px;background:var(--bg);
+    font-weight:700;font-size:13px;text-align:center;color:var(--ink-soft);line-height:1.4;
+  }
+  .pick-week-table td.period-label{
+    border:1px solid var(--line);padding:8px 6px;background:var(--bg);
+    font-weight:600;font-size:14px;color:var(--ink-soft);text-align:center;width:56px;
+  }
+  .pick-cell{
+    border:1px solid var(--line);text-align:center;cursor:default;
+    font-size:15px;font-weight:600;padding:14px 4px;
+    background:#f2f3f5;color:#c2c7cd;
+  }
+  .pick-cell.enabled{
+    background:#e5e7eb;color:#9aa2ab;cursor:pointer;
+  }
+  .pick-cell.enabled:hover{background:#d8dbe0;}
+  .pick-cell.selected{
+    background:var(--accent);color:#fff;
+  }
+  .pick-cell.selected:hover{background:var(--accent-strong);}
+  .pick-note-cell{
+    border:1px solid var(--line);text-align:center;padding:7px 4px;
+    font-size:12px;color:var(--ink-soft);background:#f7f8f9;cursor:pointer;user-select:none;
+  }
+  .pick-note-cell:hover{background:var(--accent-soft);}
+  .pick-note-cell.has-note{color:var(--accent-strong);font-weight:700;background:#fff3cd;}
+
+  .note-popover-overlay{
+    position:fixed;inset:0;background:rgba(20,24,30,.4);
+    display:none;align-items:center;justify-content:center;z-index:60;padding:16px;
+  }
+  .note-popover-overlay.show{display:flex;}
+  .note-popover{
+    background:#fff;border-radius:10px;padding:18px;max-width:360px;width:100%;
+  }
+  .note-popover .np-title{font-size:13.5px;font-weight:700;margin-bottom:6px;}
+  .note-popover .np-hint{font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.5;}
+  .note-popover textarea{min-height:80px;}
+  .note-popover .np-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+
+  .empty-state{
+    text-align:center;
+    padding:32px 16px;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+
+  .submit-bar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:6px;
+  }
+  button.primary{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:11px 22px;
+    border-radius:8px;
+    font-size:14.5px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  button.primary:hover{background:var(--accent-strong);}
+  button.primary:disabled{background:#b7bfc9;cursor:not-allowed;}
+
+  .msg{
+    font-size:13px;
+    padding:10px 12px;
+    border-radius:8px;
+    margin-bottom:14px;
+    display:none;
+  }
+  .msg.show{display:block;}
+  .msg.err{background:var(--warn-bg);color:var(--warn-text);}
+  .msg.ok{background:var(--ok-bg);color:var(--ok-text);}
+
+  .selected-summary{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-top:10px;
+  }
+
+  .done-screen{display:none;}
+  .done-screen.show{display:block;}
+  .form-screen.hide{display:none;}
+
+  .done-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:28px 24px;
+    text-align:center;
+  }
+  .done-card .icon{
+    width:48px;height:48px;border-radius:50%;
+    background:var(--ok-bg);color:var(--ok-text);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 14px;font-size:24px;font-weight:700;
+  }
+  .done-card h2{font-size:17px;margin:0 0 8px;}
+  .done-card p{color:var(--ink-soft);font-size:13.5px;margin:0 0 18px;}
+  .download-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  button.secondary{
+    background:#fff;
+    border:1px solid var(--line-strong);
+    color:var(--ink);
+    padding:10px 18px;
+    border-radius:8px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  button.secondary:hover{background:var(--bg);}
+
+  .receipt{
+    text-align:left;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px 18px;
+    margin:18px 0;
+    font-size:13px;
+    background:#fbfbfc;
+  }
+  .receipt dl{margin:0;display:grid;grid-template-columns:90px 1fr;row-gap:6px;column-gap:8px;}
+  .receipt dt{color:var(--ink-soft);}
+  .receipt dd{margin:0;}
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:#9aa2ab;
+    margin-top:30px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="eyebrow" id="campaignEyebrow">現場訪查時間預約</div>
+    <h1 id="campaignTitle">載入中…</h1>
+    <div class="sub">請填寫工廠基本資料，並勾選可配合訪查的日期時段（上午／下午）。送出後承辦人員將依您回報的時段安排訪視，並另行通知正式日期時間。</div>
+  </div>
+
+  <div id="loadError" class="msg err"></div>
+
+  <div class="form-screen" id="formScreen">
+
+    <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+      <label for="companyUrl">公司網站</label>
+      <input type="text" id="companyUrl" name="companyUrl" tabindex="-1" autocomplete="off">
+    </div>
+
+    <div class="card">
+      <h2><span class="num">1</span>工廠基本資料</h2>
+
+      <label>管制編號<span class="req">*</span></label>
+      <input type="text" id="controlNo" placeholder="例如 Q7601434（8 碼英數字）">
+
+      <label>工廠名稱<span class="req">*</span></label>
+      <input type="text" id="factoryName" placeholder="請輸入工廠全銜">
+
+      <label>工廠住址<span class="req">*</span></label>
+      <input type="text" id="address" placeholder="請輸入完整住址，例如：台中市西屯區協和里工業區十二路1號">
+
+      <div class="row2">
+        <div>
+          <label>聯絡人姓名<span class="req">*</span></label>
+          <input type="text" id="contactName" placeholder="姓名">
+        </div>
+        <div>
+          <label>聯絡人電話<span class="req">*</span></label>
+          <input type="tel" id="contactPhone" placeholder="0912-345-678">
+        </div>
+      </div>
+
+      <label>聯絡人 Email</label>
+      <input type="email" id="contactEmail" placeholder="name@company.com">
+
+      <label>備註</label>
+      <textarea id="notes" placeholder="如有特殊狀況請於此說明（選填）"></textarea>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">2</span>可配合訪查時段</h2>
+      <div class="slot-progress-wrap">
+        <div class="open-range-text" id="openRangeText"></div>
+        <div class="slot-progress" id="slotProgressTop"></div>
+      </div>
+      <div class="pick-hint">點選空格顯示「＋」表示您可配合的時段；如有時段限制可點選「備註」說明</div>
+      <div id="calendarArea">
+        <div class="empty-state">載入開放時段中…</div>
+      </div>
+      <div class="selected-summary" id="selectedSummary"></div>
+    </div>
+
+    <div class="msg err" id="submitMsg"></div>
+
+    <div class="submit-bar">
+      <button class="primary" id="submitBtn">送出預約資料</button>
+    </div>
+  </div>
+
+  <div class="done-screen" id="doneScreen">
+    <div class="done-card">
+      <div class="icon">✓</div>
+      <h2>已送出，後續通知正式訪視日期及時間</h2>
+      <p>以下為您本次填寫的資料，如需留存可下載圖片。</p>
+      <div class="receipt" id="receiptArea"></div>
+      <div class="download-row">
+        <button class="secondary" id="downloadImageBtn">下載圖片</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>本系統僅供工廠訪查排程使用</footer>
+</div>
+
+<div class="note-popover-overlay" id="notePopoverOverlay">
+  <div class="note-popover">
+    <div class="np-title" id="notePopoverTitle">日期備註</div>
+    <div class="np-hint">若該日期有時段限制（如僅下午 3 點後、需先電話聯絡等），請在此說明</div>
+    <textarea id="notePopoverInput" placeholder="例如：下午3:30之後可安排"></textarea>
+    <div class="np-actions">
+      <button class="secondary" id="noteCancelBtn" type="button">取消</button>
+      <button class="primary" id="noteSaveBtn" type="button">儲存備註</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="config.js"></script>
+<script>
+const SUPABASE_URL = window.SCHEDULER_CONFIG.SUPABASE_URL;
+const SUPABASE_ANON_KEY = window.SCHEDULER_CONFIG.SUPABASE_ANON_KEY;
+
+const params = new URLSearchParams(location.search);
+const campaignCode = params.get('case') || window.SCHEDULER_CONFIG.DEFAULT_CAMPAIGN_CODE || '';
+
+let campaign = null;
+let openSlots = [];
+const selection = {}; // { '2026-07-06': {am:true, pm:false} }
+
+function tryAutofillControlNo(){
+  if(!campaign || !campaign.facility_lookup) return;
+  const v = document.getElementById('controlNo').value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{8}$/.test(v)) return;
+  const hit = campaign.facility_lookup[v];
+  if(!hit) return;
+  // 相容舊格式 [name, city] 與新格式 {name, address, category}
+  const name = Array.isArray(hit) ? hit[0] : hit.name;
+  const address = Array.isArray(hit) ? hit[1] : hit.address;
+  document.getElementById('factoryName').value = name || '';
+  document.getElementById('address').value = address || '';
+}
+
+const DOW = ['日','一','二','三','四','五','六'];
+const WEEKDAY_DOW = ['一','二','三','四','五'];
+
+function fmtDate(d){
+  const dt = new Date(d + 'T00:00:00');
+  return `${dt.getMonth()+1}/${dt.getDate()}`;
+}
+
+function toDateStr(dt){
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+async function sb(path, opts={}){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers:{
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type':'application/json',
+      ...(opts.headers||{})
+    }
+  });
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error(t || res.statusText);
+  }
+  const raw = await res.text();
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch{ return null; }
+}
+
+async function sbRpc(fn, body){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method:'POST',
+    headers:{
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type':'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(()=>null);
+  if(!res.ok){
+    throw new Error((data && data.message) || res.statusText);
+  }
+  return data;
+}
+
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+function showLoadError(msg){
+  const el = document.getElementById('loadError');
+  el.textContent = msg;
+  el.classList.add('show');
+  document.getElementById('formScreen').style.display = 'none';
+}
+
+async function loadCampaign(){
+  if(!campaignCode){
+    showLoadError('連結缺少案件代碼，請向承辦人員確認正確的填寫連結。');
+    return;
+  }
+  try{
+    const rows = await sb(`campaigns_public?code=eq.${encodeURIComponent(campaignCode)}&select=*`);
+    if(!rows || rows.length === 0){
+      showLoadError('找不到此案件，請確認連結是否正確。');
+      return;
+    }
+    campaign = rows[0];
+    document.getElementById('campaignTitle').textContent = campaign.name;
+    document.getElementById('campaignEyebrow').textContent = '現場訪查時間預約';
+    tryAutofillControlNo();
+    await loadOpenSlots();
+  }catch(e){
+    showLoadError('載入案件資料失敗：' + e.message);
+  }
+}
+
+async function loadOpenSlots(){
+  const rows = await sb(`open_slots?campaign_id=eq.${campaign.id}&order=slot_date.asc&select=*`);
+  openSlots = rows.filter(r => r.am_enabled || r.pm_enabled);
+  renderCalendar();
+}
+
+function renderCalendar(){
+  if(openSlots.length === 0){
+    document.getElementById('calendarArea').innerHTML = '<div class="empty-state">目前尚無開放的訪查日期，請洽承辦人員。</div>';
+    return;
+  }
+  const firstOpen = openSlots[0].slot_date;
+  const lastOpen = openSlots[openSlots.length-1].slot_date;
+  document.getElementById('openRangeText').textContent = `開放區間 ${fmtDate(firstOpen)}～${fmtDate(lastOpen)}`;
+  renderAllWeeks();
+}
+
+// 把所有開放週次一次全部渲染出來（不用切換月份，方便手機使用者直接往下滑選）
+function renderAllWeeks(){
+  const area = document.getElementById('calendarArea');
+  const slotMap = {};
+  openSlots.forEach(s=>{ slotMap[s.slot_date] = s; });
+
+  const firstDate = new Date(openSlots[0].slot_date + 'T00:00:00');
+  const lastDate = new Date(openSlots[openSlots.length-1].slot_date + 'T00:00:00');
+
+  // 起點：第一個開放日期所在週的週一
+  const cursor = new Date(firstDate);
+  cursor.setDate(cursor.getDate() - ((cursor.getDay()+6)%7));
+
+  // 終點：最後一個開放日期所在週的週五
+  const endCursor = new Date(lastDate);
+  endCursor.setDate(endCursor.getDate() + (4 - ((endCursor.getDay()+6)%7)));
+
+  const weekdayDates = [];
+  while(cursor <= endCursor){
+    const dow = cursor.getDay();
+    if(dow !== 0 && dow !== 6){
+      weekdayDates.push({dow, dateStr: toDateStr(cursor), label: `${cursor.getMonth()+1}/${cursor.getDate()}`});
+    }
+    cursor.setDate(cursor.getDate()+1);
+  }
+
+  const weeks = [];
+  let current = null;
+  weekdayDates.forEach(item=>{
+    if(item.dow === 1 || !current){ current = []; weeks.push(current); }
+    current.push(item);
+  });
+
+  let html = '';
+  weeks.forEach(week=>{
+    html += `<div class="pick-week-block"><table class="pick-week-table"><thead><tr><th></th>`;
+    week.forEach(item=>{
+      html += `<th>週${WEEKDAY_DOW[item.dow-1]}<br>${item.label}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    ['am','pm'].forEach(period=>{
+      const label = period==='am' ? campaign.am_label : campaign.pm_label;
+      html += `<tr><td class="period-label">${label}</td>`;
+      week.forEach(item=>{
+        const slot = slotMap[item.dateStr];
+        const isOpen = !!(slot && (period==='am' ? slot.am_enabled : slot.pm_enabled));
+        const isSel = !!(selection[item.dateStr] && selection[item.dateStr][period]);
+        const cls = ['pick-cell'];
+        if(isOpen) cls.push('enabled');
+        if(isSel) cls.push('selected');
+        const cellText = !isOpen ? '✕' : (isSel ? '可安排訪視' : '＋');
+        html += `<td class="${cls.join(' ')}" ${isOpen?`data-date="${item.dateStr}" data-period="${period}"`:''}>${cellText}</td>`;
+      });
+      html += `</tr>`;
+    });
+
+    html += `<tr><td class="period-label">備註</td>`;
+    week.forEach(item=>{
+      const slot = slotMap[item.dateStr];
+      const isClosed = !slot || (!slot.am_enabled && !slot.pm_enabled);
+      const hasNote = selection[item.dateStr] && selection[item.dateStr].note;
+      if(isClosed){
+        html += `<td class="pick-note-cell" style="visibility:hidden;"></td>`;
+      }else{
+        html += `<td class="pick-note-cell ${hasNote?'has-note':''}" data-note-date="${item.dateStr}">${hasNote?'已填備註':'備註'}</td>`;
+      }
+    });
+    html += `</tr>`;
+
+    html += `</tbody></table></div>`;
+  });
+  area.innerHTML = html;
+
+  area.querySelectorAll('.pick-cell.enabled').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const date = el.dataset.date;
+      const period = el.dataset.period;
+      if(!selection[date]) selection[date] = {am:false, pm:false, note:''};
+      selection[date][period] = !selection[date][period];
+      el.classList.toggle('selected', selection[date][period]);
+      el.textContent = selection[date][period] ? '可安排訪視' : '＋';
+      updateSummary();
+    });
+  });
+
+  area.querySelectorAll('[data-note-date]').forEach(el=>{
+    el.addEventListener('click', ()=> openNotePopover(el.dataset.noteDate));
+  });
+
+  updateSummary();
+}
+
+let noteEditingDate = null;
+
+function openNotePopover(dateStr){
+  noteEditingDate = dateStr;
+  const dt = new Date(dateStr + 'T00:00:00');
+  document.getElementById('notePopoverTitle').textContent = `${fmtDate(dateStr)}（週${DOW[dt.getDay()]}）備註`;
+  document.getElementById('notePopoverInput').value = (selection[dateStr] && selection[dateStr].note) || '';
+  document.getElementById('notePopoverOverlay').classList.add('show');
+}
+
+document.getElementById('noteCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('notePopoverOverlay').classList.remove('show');
+});
+
+document.getElementById('noteSaveBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('notePopoverInput').value.trim();
+  if(!selection[noteEditingDate]) selection[noteEditingDate] = {am:false, pm:false, note:''};
+  selection[noteEditingDate].note = text;
+  document.getElementById('notePopoverOverlay').classList.remove('show');
+  renderAllWeeks();
+});
+
+function countSelectedSlots(){
+  return Object.values(selection).reduce((sum, s) => sum + (s.am?1:0) + (s.pm?1:0), 0);
+}
+
+function updateSummary(){
+  const dates = Object.keys(selection).filter(d => selection[d].am || selection[d].pm);
+  const el = document.getElementById('selectedSummary');
+  const minSlots = (campaign && campaign.min_slots) || 1;
+  const slotCount = countSelectedSlots();
+  const progress = `已選 ${slotCount} / 至少需 ${minSlots} 個時段`;
+  document.getElementById('slotProgressTop').textContent = progress;
+  if(dates.length === 0){
+    el.textContent = `尚未勾選任何時段（${progress}）`;
+    return;
+  }
+  const parts = dates.map(d=>{
+    const s = selection[d];
+    const periods = [s.am ? campaign.am_label : null, s.pm ? campaign.pm_label : null].filter(Boolean).join('、');
+    return `${fmtDate(d)}（${periods}）`;
+  });
+  el.textContent = `${progress}｜已選擇 ${dates.length} 天：` + parts.join('，');
+}
+
+function buildAvailabilityArray(){
+  return Object.keys(selection)
+    .filter(d => selection[d].am || selection[d].pm)
+    .sort()
+    .map(d => ({date:d, am:!!selection[d].am, pm:!!selection[d].pm, note: selection[d].note || ''}));
+}
+
+function isValidPhone(v){
+  const m = v.trim().match(/^([\d\-\s()]+?)(?:\s*(?:#|分機|轉)\s*(\d{1,6}))?$/);
+  if(!m) return false;
+  const main = m[1].replace(/[\-\s()]/g,'');
+  return /^0\d{7,9}$/.test(main);
+}
+
+function validate(){
+  const required = [
+    ['controlNo','管制編號'],
+    ['factoryName','工廠名稱'],
+    ['address','工廠住址'],
+    ['contactName','聯絡人姓名'],
+    ['contactPhone','聯絡人電話']
+  ];
+  for(const [id, label] of required){
+    if(!document.getElementById(id).value.trim()){
+      return `請填寫「${label}」`;
+    }
+  }
+  if(!/^[A-Za-z0-9]{8}$/.test(document.getElementById('controlNo').value.trim())){
+    return '管制編號格式錯誤，請輸入 8 碼英數字（例如 Q7601434）';
+  }
+  if(!isValidPhone(document.getElementById('contactPhone').value)){
+    return '聯絡人電話格式錯誤，請輸入正確電話號碼（可含分機，例如 02-12345678#123 或 0912-345-678）';
+  }
+  const minSlots = (campaign && campaign.min_slots) || 1;
+  const slotCount = countSelectedSlots();
+  if(slotCount < minSlots){
+    return `請至少勾選 ${minSlots} 個時段（目前已選 ${slotCount} 個）`;
+  }
+  return null;
+}
+
+let lastSubmission = null;
+
+document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('submitMsg');
+  errEl.classList.remove('show');
+
+  const err = validate();
+  if(err){
+    errEl.textContent = err;
+    errEl.classList.add('show');
+    return;
+  }
+
+  if(document.getElementById('companyUrl').value.trim() !== ''){
+    // 蜜罐欄位被填寫，判定為自動化程式，偽裝成功但不實際送出
+    lastSubmission = null;
+    document.getElementById('formScreen').classList.add('hide');
+    document.getElementById('doneScreen').classList.add('show');
+    return;
+  }
+
+  const payload = {
+    campaign_id: campaign.id,
+    control_no: document.getElementById('controlNo').value.trim(),
+    factory_name: document.getElementById('factoryName').value.trim(),
+    address: document.getElementById('address').value.trim(),
+    contact_name: document.getElementById('contactName').value.trim(),
+    contact_phone: document.getElementById('contactPhone').value.trim(),
+    contact_email: document.getElementById('contactEmail').value.trim() || null,
+    notes: document.getElementById('notes').value.trim() || null,
+    availability: buildAvailabilityArray()
+  };
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '送出中…';
+
+  try{
+    await sbRpc('submit_availability', {
+      p_campaign_id: payload.campaign_id,
+      p_control_no: payload.control_no,
+      p_factory_name: payload.factory_name,
+      p_address: payload.address,
+      p_contact_name: payload.contact_name,
+      p_contact_phone: payload.contact_phone,
+      p_contact_email: payload.contact_email,
+      p_notes: payload.notes,
+      p_availability: payload.availability
+    });
+    lastSubmission = payload;
+    showDoneScreen(payload);
+  }catch(e){
+    errEl.textContent = '送出失敗：' + e.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = '送出預約資料';
+  }
+});
+
+function availabilityText(av){
+  return av.map(a=>{
+    const periods = [a.am ? campaign.am_label : null, a.pm ? campaign.pm_label : null].filter(Boolean).join('、');
+    const noteText = a.note ? `（備註：${a.note}）` : '';
+    return `${a.date}（週${DOW[new Date(a.date+'T00:00:00').getDay()]}）：${periods}${noteText}`;
+  }).join('\n');
+}
+
+function showDoneScreen(payload){
+  document.getElementById('formScreen').classList.add('hide');
+  document.getElementById('doneScreen').classList.add('show');
+
+  const receiptEl = document.getElementById('receiptArea');
+  receiptEl.innerHTML = `<dl>
+    <dt>案件</dt><dd>${escapeHtml(campaign.name)}</dd>
+    <dt>管制編號</dt><dd>${escapeHtml(payload.control_no)}</dd>
+    <dt>工廠名稱</dt><dd>${escapeHtml(payload.factory_name)}</dd>
+    <dt>住址</dt><dd>${escapeHtml(payload.address)}</dd>
+    <dt>聯絡人</dt><dd>${escapeHtml(payload.contact_name)}（${escapeHtml(payload.contact_phone)}）</dd>
+    <dt>可配合時段</dt><dd style="white-space:pre-line">${escapeHtml(availabilityText(payload.availability))}</dd>
+  </dl>`;
+}
+
+document.getElementById('downloadImageBtn').addEventListener('click', async ()=>{
+  if(!lastSubmission) return;
+  const btn = document.getElementById('downloadImageBtn');
+  btn.disabled = true;
+  btn.textContent = '產生圖片中…';
+  try{
+    const canvas = await html2canvas(document.getElementById('receiptArea'), {backgroundColor:'#ffffff', scale:2});
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `訪查預約回條_${lastSubmission.factory_name}.png`;
+    a.click();
+  }finally{
+    btn.disabled = false;
+    btn.textContent = '下載圖片';
+  }
+});
+
+document.getElementById('controlNo').addEventListener('input', tryAutofillControlNo);
+document.getElementById('controlNo').addEventListener('blur', tryAutofillControlNo);
+
+loadCampaign();
+</script>
+</body>
+</html>
